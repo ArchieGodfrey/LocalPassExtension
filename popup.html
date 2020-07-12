@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+  <html>
+    <head>
+      <style>
+        button {
+          height: 30px;
+          width: auto;
+          outline: none;
+        }
+        body {
+          margin: 0;
+          border-radius: 10px;
+        }
+        .root {
+          background-color: #403F4C;
+          border-radius: 10px;
+          box-shadow: 3px 3px 3px black;
+        }
+        .username {
+          color: #F4F9E9;
+          font-size: large;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="root">
+        <div class="username">Username:</div>
+        <input id="username" value="Default Username" />
+        <button id="login">Request Access</button>
+        <div id="loginStatus">Access Permission Required</div>
+        <button id="changeColor">Get Password</button>
+        <input id="url" value="Enter the IP address displayed on the app" />
+        <div id="urlText">URL HERE</div>
+      </div>
+      <script src="popup.js"></script>
+    </body>
+  </html>
