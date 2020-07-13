@@ -260,8 +260,10 @@ function getCurrentSitePassword() {
         let savedSite = document.getElementById('SavedSite');
         savedSite.value = response.data.website;
         let savedUsername = document.getElementById('SavedUsername');
+        savedUsername.readOnly = false;
         savedUsername.value = response.data.username;
         let savedPassword = document.getElementById('SavedPassword');
+        savedPassword.readOnly = false;
         savedPassword.type = "password";
         savedPassword.value = response.data.password;
       } else {
