@@ -284,6 +284,31 @@ getPassword.onclick = function() {
   getCurrentSitePassword();
 };
 
+// SAVE PASSWORD -----------------------------------------------------------
+
+// Save password on request
+let savePassword = document.getElementById('SavePassword');
+
+// Send POST request with data
+savePassword.onclick = function() {
+  let website = document.getElementById('SavedSite').value;
+  let username = document.getElementById('SavedUsername').value;
+  let password = document.getElementById('SavedPassword').value;
+  let payload = {website,username,password};
+  let url = document.getElementById('Url').value;
+  httpPost(`http://${url}:8080/manager`, payload, (res) => {
+    const response = JSON.parse(res);
+    if (response && response.status === 'OK') {
+      let serverStatus = document.getElementById('ServerStatus');
+      serverStatus.style.backgroundColor = 'green';
+      serverStatus.innerHTML = "Password Saved";
+      setTimeout(() => {
+        serverStatus.innerHTML = "Server Online";
+      }, 3000);
+    }
+  })
+}
+
 // COPY DATA ---------------------------------------------------------------
 
 // Copy inputs on first press
