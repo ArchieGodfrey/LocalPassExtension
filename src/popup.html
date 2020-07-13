@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+  <html>
+    <head>
+      <link rel="stylesheet" type="text/css" href="popup.css">
+    </head>
+    <body>
+      <div id="Warning" class="status">
+        Javascript Failed To Run
+      </div>
+  
+      <div id="Setup">
+        <div class="heading">Setup</div>
+        <div class="subheading">Username:</div>
+        <div class="bar"></div>
+        <input id="Username" placeholder="Default Username" />
+        <div class="subheading">Server Url:</div>
+        <div class="bar"></div>
+        <input id="Url" placeholder="Copy address from app" />
+        <div class="center">
+          <div
+            id="AccessStatus"
+            class="status"
+          >
+            Access Permission Required
+          </div>
+          <button id="RevokeAccess">Revoke Access</button>
+        </div>
+        <div class="description">
+          Setting a <u>Username</u> allows you to identify different devices.
+          In order to use the extension, you need to give access from the app
+        </div>
+        <div class="subheading">Setup Steps:</div>
+        <div class="bar"></div>
+        <ol>
+          <li>Set a <u>Username</u> to identify this browser</li>
+          <li>Copy the <u>Address</u> displayed on the app</li>
+          <li><u>Request Access</u> using the button below</li>
+          <li>Accept access on the app</li>
+          <li>Use your passwords!</li>
+        </ol>
+        <div class="row">
+          <button id="RequestAccess">Request Access</button>
+          <button id="ShowMain">Save Settings</button>
+        </div>
+      </div>
+
+      <div id="Main">
+        <div class="heading">LocalPass</div>
+        <div class="subheading">Current Site:</div>
+        <div class="bar"></div>
+        <div class="data" id="SavedSite">No Site Available</div>
+        <div class="subheading">Username:</div>
+        <div class="bar"></div>
+        <div class="data" id="SavedUsername">No Username Available</div>
+        <div class="subheading">Password:</div>
+        <div class="bar"></div>
+        <div class="data" id="SavedPassword">No Password Available</div>
+        <div id="ServerStatus" class="status">
+          Server Offline
+        </div>
+        <div class="description">
+          If there's no information available but you think there should be,
+          press the <br>"<u>Get Password</u>"<br> button to check again
+        </div>
+        <div class="center">
+          <button id="GetPassword">Get Password</button>
+        </div>
+        <div class="row">
+          <button id="ShowGenerate">Generator</button>
+          <button id="ShowSetup">Settings</button>
+        </div>
+      </div>
+
+      <div id="Generate">
+        <div class="heading">Generate Password</div>
+        <div class="subheading">Password:</div>
+        <div class="bar"></div>
+        <div id="NewPassword" class="data"></div>
+        <div class="subheading">Length:</div>
+        <div class="bar"> </div>
+          <input
+            id="MaxLength"
+            type="number"
+            placeholder="Max Length"
+          />
+        <div class="subheading">Uppercase:</div>
+        <div class="bar"></div>
+          <input
+            id="Uppercase"
+            type="number"
+            placeholder="Number of Uppercase Letters"
+          />
+        <div class="subheading">Special:</div>
+        <div class="bar"></div>
+        <div class="row">
+          <input
+            id="Special"
+            type="checkbox"
+            class="checkbox"
+          />
+          <input
+            id="SpecialCharacters"
+            type="text"
+            placeholder="@%+/\!#$^?:(){}[]~-_."
+          />
+        </div>
+        <div class="row">
+          <button id="GeneratePassword">Generate</button>
+          <button id="ScrollMain">Passwords</button>
+        </div>
+      </div>
+      <script src="popup.js"></script>
+    </body>
+  </html>
