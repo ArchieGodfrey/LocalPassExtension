@@ -58,7 +58,7 @@ body {
   }
   .bar {
     width: 125px;
-    margin: 3px 0 10px 0;
+    margin: 3px 0 5px 0;
     border: 1px solid #F4F9E9;
   }
   .subheading {
@@ -85,10 +85,14 @@ body {
   .data {
     width: 100%;
     border-bottom: 1px dashed #F4F9E9;
-    font-size: small;
+    font-size: medium;
     font-weight: 600;
     color: #F4F9E9;
-    margin: 5px 0;
+    margin: 10px 0;
+  }
+  .data:focus { 
+    outline: none;
+    border: none;
   }
   .row {
     display: flex;

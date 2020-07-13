@@ -248,27 +248,69 @@ revokeAccess.onclick = function() {
 // GET PASSWORD ------------------------------------------------------------
 
 // Get the password for the current site
+function getCurrentSitePassword() {
+  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+    var activeTabURL = tabs[0].url;
+    let cleanURL = activeTabURL.split('//').pop().split('/')[0];
+    let url = document.getElementById('Url').value;
+    document.getElementById('SavedSite').value = cleanURL;
+    httpGet(`http://${url}:8080/manager/${cleanURL}`, (res) => {
+      const response = JSON.parse(res);
+      if (response && response.status === 'OK') {
+        let savedSite = document.getElementById('SavedSite');
+        savedSite.value = response.data.website;
+        let savedUsername = document.getElementById('SavedUsername');
+        savedUsername.value = response.data.username;
+        let savedPassword = document.getElementById('SavedPassword');
+        savedPassword.type = "password";
+        savedPassword.value = response.data.password;
+      } else {
+        showError('Password Not Found');
+      }
+    });
+  });
+}
+
+// Call on first load
+getCurrentSitePassword();
+
+// Get password on request
 let getPassword = document.getElementById('GetPassword');
 
 // Send a GET request to the server
 getPassword.onclick = function() {
-  let url = document.getElementById('Url').value;
-  let currentSite = 'login.live.com';
-  let cleanSite = currentSite.split('//').pop().split('/')[0];
-  httpGet(`http://${url}:8080/manager/${currentSite}`, (res) => {
-    const response = JSON.parse(res);
-    if (response && response.status === 'OK') {
-      let savedSite = document.getElementById('SavedSite');
-      savedSite.innerHTML = response.data.website;
-      let savedUsername = document.getElementById('SavedUsername');
-      savedUsername.innerHTML = response.data.username;
-      let savedPassword = document.getElementById('SavedPassword');
-      savedPassword.innerHTML = response.data.password;
-    } else {
-      showError('Password Not Found');
-    }
-  });
+  getCurrentSitePassword();
 };
+
+// COPY DATA ---------------------------------------------------------------
+
+// Copy inputs on first press
+function onCopyToClipboard(id) {
+  let element = document.getElementById(id);
+  element.onfocus = function() {
+    if (!element.readOnly) {
+      element.select();
+      element.setSelectionRange(0, 99999);
+      document.execCommand("copy");
+      let value = element.value;
+      let type = element.type;
+      element.style.textAlign = 'center';
+      element.type = 'text';
+      element.value = "COPIED!";
+      setTimeout(() => {
+        element.style.textAlign = 'left';
+        element.type = type;
+        element.value = value;
+      }, 1000);
+    } else {
+      element.blur();
+    }
+  }
+}
+
+// Set listeners
+onCopyToClipboard('SavedUsername');
+onCopyToClipboard('SavedPassword');
 
 // GENERATE PASSWORD -------------------------------------------------------
 
