@@ -3,12 +3,12 @@
     "version": "1.0",
     "description": "Local Password Manager",
     "background": {
-        "scripts": ["background.js"],
+        "scripts": ["onPageLoad.js"],
         "persistent": false
       },
     "browser_action": {
         "default_popup": "src/popup.html"
       },
-    "permissions": ["activeTab", "declarativeContent", "storage", "*://*/*"],
+    "permissions": ["webNavigation", "activeTab", "declarativeContent", "storage", "*://*/*"],
     "manifest_version": 2
 }

@@ -82,45 +82,6 @@ function httpPost(url, payload, callback)
     });
 }
 
-/*let changeColor = document.getElementById('changeColor');
-let text = document.getElementById('urlText');
-text.innerHTML = "Awaiting response";
-
-chrome.storage.sync.get('color', function(data) {
-    changeColor.style.backgroundColor = data.color;
-    changeColor.setAttribute('value', data.color);
-});
-
-/*
-var inputs = document.getElementsByTagName("input");
-Array.prototype.slice.call(inputs).forEach(function(input) {
-  if (input.type === 'password') {
-    input.value = 'password';
-  }
-});
-
-
-changeColor.onclick = function(element) {
-  let url = document.getElementById('url');
-  text.innerHTML = "Waiting for reponse";
-  httpGetAsync(`${url.value}/manager/passwords`, (response) => {
-    text.innerHTML = "Password available for site: " + response;
-    let password = response;
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      chrome.tabs.executeScript(
-          tabs[0].id,
-          {code: 'var inputs = document.getElementsByTagName("input"); Array.prototype.slice.call(inputs).forEach(function(input) { if (input.type === "password") { input.value = "'+password+'";}});'});
-    });
-  });
-};
-
-/*changeColor.onclick = function(element) {
-  let color = element.target.value;
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    chrome.tabs.executeScript(
-        tabs[0].id,
-        {code: 'document.body.style.backgroundColor = "' + color + '";'});
-  });*/
 // SERVER STATUS -----------------------------------------------------------
 
 // Check if the server is on
@@ -149,10 +110,10 @@ chrome.storage.sync.get('url', function(data) {
     checkServer(`http://${data.url}:8080/`)
   }
 });
-chrome.storage.sync.get('username', function(data) {
-  let username = document.getElementById('Username');
-  if (data.username) {
-    username.value = data.username;
+chrome.storage.sync.get('localUsername', function(data) {
+  let LocalUsername = document.getElementById('LocalUsername');
+  if (data.localUsername) {
+    LocalUsername.value = data.localUsername;
   }
 });
 chrome.storage.sync.get('token', function(data) {
@@ -185,8 +146,8 @@ showMain.onclick = function() {
   // Save settings
   let url = document.getElementById('Url').value;
   chrome.storage.sync.set({url});
-  let username = document.getElementById('Username').value;
-  chrome.storage.sync.set({username});
+  let localUsername = document.getElementById('LocalUsername').value;
+  chrome.storage.sync.set({localUsername});
 };
 
 // Swap to Main
@@ -219,9 +180,9 @@ let accessStatus = document.getElementById('AccessStatus');
 // Send POST request and await response
 requestAccess.onclick = function() {
   let url = document.getElementById('Url').value;
-  let username = document.getElementById('Username').value;
+  let LocalUsername = document.getElementById('LocalUsername').value;
   accessStatus.innerHTML = "Waiting for reponse on device";
-  httpPostNoToken(`http://${url}:8080/auth/login`, {username}, (response) => {
+  httpPostNoToken(`http://${url}:8080/auth/login`, {username: LocalUsername}, (response) => {
     const token = JSON.parse(response);
     if (token && token.accessToken) {
       accessStatus.innerHTML = "Access Granted";
@@ -274,7 +235,7 @@ function getCurrentSitePassword() {
 }
 
 // Call on first load
-getCurrentSitePassword();
+//getCurrentSitePassword();
 
 // Get password on request
 let getPassword = document.getElementById('GetPassword');
@@ -406,3 +367,6 @@ generatePassword.onclick = function() {
   let newPassword = document.getElementById('NewPassword');
   newPassword.innerHTML = array.join('');
 }
+
+// FORM TRIGGER ------------------------------------------------------------
+
