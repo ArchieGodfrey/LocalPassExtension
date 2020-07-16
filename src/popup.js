@@ -28,7 +28,7 @@ function httpGet(url, callback)
     xmlHttp.onreadystatechange = function() { 
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
           callback(xmlHttp.responseText);
-        } else if (xmlHttp.status === 401) {
+        } else if (xmlHttp.status === 401 || xmlHttp.status === 403) {
           onRevokeAccess('Please Request Access Again')
         } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
           showError('GET Request Failed: ' + xmlHttp.status);
@@ -129,9 +129,10 @@ chrome.storage.sync.get('token', function(data) {
   if (data.token && data.token !== 'REVOKED') {
     accessStatus.innerHTML = "Access Granted";
     accessStatus.style.backgroundColor  = "green";
-    document.getElementById('RevokeAccess').style.display = 'none';
     Setup.style.display = 'none';
     Main.style.display = 'flex';
+  } else {
+    document.getElementById('RevokeAccess').style.display = 'none';
   }
 });
 chrome.storage.sync.get('savedPassword', function(password) {
@@ -244,9 +245,10 @@ function onRevokeAccess(message) {
   chrome.storage.sync.set({token: 'REVOKED'});
   accessStatus.innerHTML = message;
   accessStatus.style.backgroundColor  = "#FF6933";
+  let serverStatus = document.getElementById('ServerStatus');
   serverStatus.innerHTML = message;
   serverStatus.style.backgroundColor  = "#FF6933";
-  document.getElementById('RevokeAccess').style.display = 'none';
+  revokeAccess.style.display = 'none';
 }
 
 // Remove JWT Token from storage
