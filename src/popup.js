@@ -28,6 +28,8 @@ function httpGet(url, callback)
     xmlHttp.onreadystatechange = function() { 
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
           callback(xmlHttp.responseText);
+        } else if (xmlHttp.status === 401) {
+          onRevokeAccess('Please Request Access Again')
         } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
           showError('GET Request Failed: ' + xmlHttp.status);
         }  
@@ -85,8 +87,10 @@ function httpPost(url, payload, callback)
 // SERVER STATUS -----------------------------------------------------------
 
 // Check if the server is on
-function checkServer(url) {
-  let serverStatus = document.getElementById('ServerStatus');
+function checkServer(url, app) {
+  let serverStatus = app
+  ? document.getElementById('AppStatus')
+  : document.getElementById('ServerStatus');
   httpGet(url, (response) => {
     if (response) {
       serverStatus.style.backgroundColor = 'green';
@@ -107,7 +111,11 @@ chrome.storage.sync.get('url', function(data) {
   if (data.url) {
     url.value = data.url;
     // Check if server is live
-    checkServer(`http://${data.url}:8080/`)
+    checkServer(`http://${data.url}:8080/`);
+    checkServer(`http://${data.url}:8080/`, true);
+    // setInterval(() => {
+    //   checkServer(`http://${data.url}:8080/`);
+    // }, 5000)
   }
 });
 chrome.storage.sync.get('localUsername', function(data) {
@@ -121,27 +129,56 @@ chrome.storage.sync.get('token', function(data) {
   if (data.token && data.token !== 'REVOKED') {
     accessStatus.innerHTML = "Access Granted";
     accessStatus.style.backgroundColor  = "green";
+    document.getElementById('RevokeAccess').style.display = 'none';
     Setup.style.display = 'none';
     Main.style.display = 'flex';
   }
 });
+chrome.storage.sync.get('savedPassword', function(password) {
+  chrome.storage.sync.get('savedUsername', function(username) {
+    chrome.storage.sync.get('savedSite', function(site) {
+      if (site.savedSite) {
+        let savedSite = document.getElementById('SavedSite');
+        savedSite.value = site.savedSite;
+      }
+      if (username.savedUsername) {
+        let savedUsername = document.getElementById('SavedUsername');
+        savedUsername.value = username.savedUsername;
+      }
+      if (password.savedPassword ) {
+        let savedPassword = document.getElementById('SavedPassword');
+        savedPassword.value = password.savedPassword;
+        let showSave = document.getElementById('ShowSave');
+        showSave.style.display = 'block';
+      }
+    })
+  })
+})
 
 // PAGE SWAPPING -----------------------------------------------------------
 
 // Swap Between Pages
 let showMain = document.getElementById('ShowMain');
 let showSetup = document.getElementById('ShowSetup');
-let scrollMain = document.getElementById('ScrollMain');
 let showGenerate = document.getElementById('ShowGenerate');
+let showSave = document.getElementById('ShowSave');
+let goBacks = document.getElementsByClassName('GoBack');
 let main = document.getElementById('Main');
 let setup = document.getElementById('Setup');
 let generate = document.getElementById('Generate');
+let savedData = document.getElementById('SavedData');
+
+function showPage(page) {
+  main.style.display = 'none';
+  setup.style.display = 'none';
+  generate.style.display = 'none';
+  savedData.style.display = 'none';
+  page.style.display = 'flex';
+}
 
 // Swap to Setup
 showMain.onclick = function() {
-  main.style.display = 'flex';
-  setup.style.display = 'none';
-  generate.style.display = 'none';
+  showPage(main);
 
   // Save settings
   let url = document.getElementById('Url').value;
@@ -150,26 +187,22 @@ showMain.onclick = function() {
   chrome.storage.sync.set({localUsername});
 };
 
-// Swap to Main
-showSetup.onclick = function() {
-  main.style.display = 'none';
-  setup.style.display = 'flex';
-  generate.style.display = 'none';
-};
-
-// Swap to Main
-scrollMain.onclick = function() {
-  main.style.display = 'flex';
-  setup.style.display = 'none';
-  generate.style.display = 'none';
-};
-
 // Swap to Generator
 showGenerate.onclick = function() {
-  main.style.display = 'none';
-  setup.style.display = 'none';
-  generate.style.display = 'flex';
+  showPage(generate);
 };
+
+// Swap to Saved Data
+showSave.onclick = function() {
+  showPage(savedData);
+};
+
+// Swap to Main
+Array.prototype.slice.call(goBacks).forEach((goBack) => {
+  goBack.onclick = function() {
+    showPage(main);
+  };
+});
 
 // REQUEST ACCESS ---------------------------------------------------------
 
@@ -188,6 +221,7 @@ requestAccess.onclick = function() {
       accessStatus.innerHTML = "Access Granted";
       accessStatus.style.backgroundColor  = "green";
       chrome.storage.sync.set({token: token.accessToken});
+      document.getElementById('RevokeAccess').style.display = 'block';
     } else if (token && token.access) {
       accessStatus.innerHTML = token.access;
     } else {
@@ -200,50 +234,17 @@ requestAccess.onclick = function() {
 // Revoke the extension's access to passwords
 let revokeAccess = document.getElementById('RevokeAccess');
 
+function onRevokeAccess(message) {
+  chrome.storage.sync.set({token: 'REVOKED'});
+  accessStatus.innerHTML = message;
+  accessStatus.style.backgroundColor  = "#FF6933";
+  document.getElementById('RevokeAccess').style.display = 'none';
+}
+
 // Remove JWT Token from storage
 revokeAccess.onclick = function() {
-  chrome.storage.sync.set({token: 'REVOKED'});
-  accessStatus.innerHTML = "Access Permission Required";
-  accessStatus.style.backgroundColor  = "#FF6933"; 
+  onRevokeAccess("Access Permission Required");
 }
-// GET PASSWORD ------------------------------------------------------------
-
-// Get the password for the current site
-function getCurrentSitePassword() {
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    var activeTabURL = tabs[0].url;
-    let cleanURL = activeTabURL.split('//').pop().split('/')[0];
-    let url = document.getElementById('Url').value;
-    document.getElementById('SavedSite').value = cleanURL;
-    httpGet(`http://${url}:8080/manager/${cleanURL}`, (res) => {
-      const response = JSON.parse(res);
-      if (response && response.status === 'OK') {
-        let savedSite = document.getElementById('SavedSite');
-        savedSite.value = response.data.website;
-        let savedUsername = document.getElementById('SavedUsername');
-        savedUsername.readOnly = false;
-        savedUsername.value = response.data.username;
-        let savedPassword = document.getElementById('SavedPassword');
-        savedPassword.readOnly = false;
-        savedPassword.type = "password";
-        savedPassword.value = response.data.password;
-      } else {
-        showError('Password Not Found');
-      }
-    });
-  });
-}
-
-// Call on first load
-//getCurrentSitePassword();
-
-// Get password on request
-let getPassword = document.getElementById('GetPassword');
-
-// Send a GET request to the server
-getPassword.onclick = function() {
-  getCurrentSitePassword();
-};
 
 // SAVE PASSWORD -----------------------------------------------------------
 
@@ -260,11 +261,15 @@ savePassword.onclick = function() {
   httpPost(`http://${url}:8080/manager`, payload, (res) => {
     const response = JSON.parse(res);
     if (response && response.status === 'OK') {
-      let serverStatus = document.getElementById('ServerStatus');
-      serverStatus.style.backgroundColor = 'green';
-      serverStatus.innerHTML = "Password Saved";
+      let appStatus = document.getElementById('AppStatus');
+      appStatus.style.backgroundColor = 'green';
+      appStatus.innerHTML = "Password Saved";
+      // Clear saved data
+      chrome.storage.sync.set({savedSite: null});
+      chrome.storage.sync.set({savedUsername: null});
+      chrome.storage.sync.set({savedPassword: null});
       setTimeout(() => {
-        serverStatus.innerHTML = "Server Online";
+        appStatus.innerHTML = "Server Online";
       }, 3000);
     }
   })

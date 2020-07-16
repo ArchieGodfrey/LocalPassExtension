@@ -7,17 +7,13 @@ function httpGet(url, callback)
     xmlHttp.onreadystatechange = function() { 
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
           callback(xmlHttp.responseText);
-        } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
-          showError('GET Request Failed: ' + xmlHttp.status);
-        }  
+        }
     }
     chrome.storage.sync.get('token', function(data) {
       if (data.token) {
         xmlHttp.open("GET", url, true);
         xmlHttp.setRequestHeader('Authorization', 'Bearer ' + data.token);
         xmlHttp.send();
-      } else {
-        showError('GET: No Access Token');
       }
     });
 }
@@ -50,6 +46,16 @@ chrome.webNavigation.onCompleted.addListener(() => {
       // Clear username/password storage
       chrome.storage.sync.set({username: null});
       chrome.storage.sync.set({password: null});
+      // Save active site
+      let cleanURL = tabs[0].url.split('//').pop().split('/')[0];
+      chrome.storage.sync.set({savedSite: cleanURL});
+      // Capture data to offer to save
+      chrome.tabs.executeScript(
+        tabs[0].id,
+        {
+          file: 'captureData.js'
+        }
+      );
       // Save current tab url for use in injected script
       getCurrentSitePassword(() => {
         // Inject script to find password inputs

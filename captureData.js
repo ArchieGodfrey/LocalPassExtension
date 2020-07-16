@@ -8,22 +8,18 @@ function verifyInput(query, property) {
 	}
 }
 
-// AUTOFILL  ----------------------------------------------------------------------------
+// DATA CAPTURE  ------------------------------------------------------------------------
 
-function autofill(query, input) {
+function capture(query, name, input) {
 	const type = input.type;
 	const id = input.id;
 
 	if (verifyInput(type, query) || verifyInput(id, query)) {
-		chrome.storage.sync.get(query, (data) => {
-			if (data[query]) {
-				input.style.backgroundColor = '#FF6933';
-				input.value = data[query];
-				var div = document.createElement('div');
-				div.textContent = "LocalPass Used!";
-				input.parentElement.appendChild(div);
-			}
-		})
+		input.onchange = () => {
+			const temp = {};
+			temp[name] = input.value
+			chrome.storage.sync.set(temp);
+		}
 	}
 }
 
@@ -31,11 +27,12 @@ function autofill(query, input) {
 
 var inputs = document.getElementsByTagName("input");
 Array.prototype.slice.call(inputs).forEach((input) => {
-	console.log(input.type, input.id)
-	// Try autofill fields
+    console.log('capturing')
+
+	// Try remember whats added
 	try {
-		autofill('username', input);
-		autofill('password', input);
+		capture('username', 'savedUsername', input);
+		capture('password', 'savedPassword', input);
 	} catch {
 		console.log('No inputs found');
 	}

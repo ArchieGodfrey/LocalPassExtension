@@ -45,9 +45,16 @@ body {
     display: none;
     flex-direction: column;
   }
+  #SavedData {
+    display: none;
+    flex-direction: column;
+  }
   #Generate {
     display: none;
     flex-direction: column;
+  }
+  #ShowSave {
+    display: none;
   }
   .heading {
     color: #F4F9E9;
