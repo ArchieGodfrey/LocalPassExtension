@@ -379,8 +379,6 @@ generatePassword.onclick = function() {
   // Apply criteria
   if (maxLength) {
     array = array.slice(0, maxLength);
-  } else {
-    maxLength.value = 50;
   }
   if (uppercase) {
     for (var i = 0; (i < uppercase && spaceLeft()); i++) {
