@@ -176,7 +176,7 @@ function showPage(page) {
   page.style.display = 'flex';
 }
 
-// Swap to Setup
+// Swap to Main
 showMain.onclick = function() {
   showPage(main);
 
@@ -197,6 +197,11 @@ showSave.onclick = function() {
   showPage(savedData);
 };
 
+// Swap to Setup
+showSetup.onclick = function() {
+  showPage(setup);
+};
+
 // Swap to Main
 Array.prototype.slice.call(goBacks).forEach((goBack) => {
   goBack.onclick = function() {
@@ -212,6 +217,7 @@ let accessStatus = document.getElementById('AccessStatus');
 
 // Send POST request and await response
 requestAccess.onclick = function() {
+  requestAccess.blur();
   let url = document.getElementById('Url').value;
   let LocalUsername = document.getElementById('LocalUsername').value;
   accessStatus.innerHTML = "Waiting for reponse on device";
@@ -238,6 +244,8 @@ function onRevokeAccess(message) {
   chrome.storage.sync.set({token: 'REVOKED'});
   accessStatus.innerHTML = message;
   accessStatus.style.backgroundColor  = "#FF6933";
+  serverStatus.innerHTML = message;
+  serverStatus.style.backgroundColor  = "#FF6933";
   document.getElementById('RevokeAccess').style.display = 'none';
 }
 
@@ -281,21 +289,20 @@ savePassword.onclick = function() {
 function onCopyToClipboard(id) {
   let element = document.getElementById(id);
   element.onfocus = function() {
-    if (!element.readOnly) {
-      element.select();
-      element.setSelectionRange(0, 99999);
-      document.execCommand("copy");
-      let value = element.value;
-      let type = element.type;
-      element.style.textAlign = 'center';
-      element.type = 'text';
-      element.value = "COPIED!";
-      setTimeout(() => {
-        element.style.textAlign = 'left';
-        element.type = type;
-        element.value = value;
-      }, 1000);
-    } else {
+    element.select();
+    element.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    let value = element.value;
+    let type = element.type;
+    element.style.textAlign = 'center';
+    element.type = 'text';
+    element.value = "COPIED!";
+    setTimeout(() => {
+      element.style.textAlign = 'left';
+      element.type = type;
+      element.value = value;
+    }, 1000);
+    if (element.readOnly) {
       element.blur();
     }
   }
@@ -304,6 +311,7 @@ function onCopyToClipboard(id) {
 // Set listeners
 onCopyToClipboard('SavedUsername');
 onCopyToClipboard('SavedPassword');
+onCopyToClipboard('NewPassword');
 
 // GENERATE PASSWORD -------------------------------------------------------
 
@@ -335,42 +343,66 @@ generatePassword.onclick = function() {
   // Get criteria
   let maxLength = document.getElementById('MaxLength').value;
   let uppercase = document.getElementById('Uppercase').value;
-  let special = document.getElementById('Special').value;
+  let lowercase = document.getElementById('Lowercase').value;
+  let specialCharacters = document.getElementById('SpecialCharacters').value;
+  let charactersAmount = document.getElementById('CharactersAmount').value;
 
   // Generate random numbers
-  let arrayOfNums = new Uint32Array(maxLength ? Math.ceil(maxLength / 10) : 3);
+  let arrayOfNums = new Uint32Array(maxLength ? Math.floor(maxLength / 10) : 10);
   window.crypto.getRandomValues(arrayOfNums);
   let array = new String(arrayOfNums).replace(/,/g, '').split('');
+
+  // Create array to track which indices have changes
+  let repeats = [];
+
+  // Keep array equal to max length
+  const spaceLeft = () => (repeats.length < maxLength - 1);
+
+  // Get a random integer in a range
+  const getRandomInt = (min, max) => {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  // Add value to array, increase repeats
+  const addToArray = (value) => {
+    let index = getRandomInt(0,array.length - 1);
+    if (repeats.find((i) => i === index) !== undefined) {
+      repeats = repeats.sort();
+      index = repeats[repeats.length - 1] + 1;
+    }
+    array[index] = value;
+    repeats.push(index);
+  }
 
   // Apply criteria
   if (maxLength) {
     array = array.slice(0, maxLength);
+  } else {
+    maxLength = 20;
   }
   if (uppercase) {
-    function getRandomInt(min, max) {
-      min = Math.ceil(min);
-      max = Math.floor(max);
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-    let repeats = [];
-    for (var i = 0; (i < uppercase && i < maxLength); i++) {
-      let index = getRandomInt(0,array.length - 1);
-      if (repeats.find((i) => i === index) !== undefined) {
-        repeats = repeats.sort();
-        index = repeats[repeats.length - 1] + 1;
-      }
-      console.log(repeats, index);
-      array[index] = String.fromCharCode(65 + getRandomInt(0,25));
-      repeats.push(index);
+    for (var i = 0; (i < uppercase && spaceLeft()); i++) {
+      addToArray(String.fromCharCode(65 + getRandomInt(0,25)));
     }
   }
-  if (special) {
-    
+  if (lowercase) {
+    for (var i = 0; (i < lowercase && spaceLeft()); i++) {
+      addToArray(String.fromCharCode(97 + getRandomInt(0,25)));
+    }
+  }
+  if (specialCharacters) {
+    for (var i = 0; (i < charactersAmount && spaceLeft()); i++) {
+      let character = getRandomInt(0,specialCharacters.length - 1);
+      addToArray(specialCharacters[character]);
+    }
   }
 
   // Display
   let newPassword = document.getElementById('NewPassword');
-  newPassword.innerHTML = array.join('');
+  newPassword.value = array.join('');
+  generatePassword.blur();
 }
 
 // FORM TRIGGER ------------------------------------------------------------

@@ -19,9 +19,6 @@ function autofill(query, input) {
 			if (data[query]) {
 				input.style.backgroundColor = '#FF6933';
 				input.value = data[query];
-				var div = document.createElement('div');
-				div.textContent = "LocalPass Used!";
-				input.parentElement.appendChild(div);
 			}
 		})
 	}
@@ -31,7 +28,6 @@ function autofill(query, input) {
 
 var inputs = document.getElementsByTagName("input");
 Array.prototype.slice.call(inputs).forEach((input) => {
-	console.log(input.type, input.id)
 	// Try autofill fields
 	try {
 		autofill('username', input);

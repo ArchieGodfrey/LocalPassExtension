@@ -5,6 +5,7 @@ body {
     padding: 10px;
   }
   button {
+    cursor: pointer;
     height: 30px;
     width: auto;
     border: 1px solid #F4F9E9;
@@ -15,9 +16,14 @@ body {
     font-weight: 600;
     text-align: center;
     margin: 10px 0;
+    transition: border 1s ease;
   }
   button:hover {
     outline: none;
+    border: 1px solid #FF6933;
+  }
+  button:focus {
+    background-color: #83819c;
   }
   li {
     font-size: small;
@@ -110,4 +116,15 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+  }
+  #NewPassword {
+    border: none;
+    border-bottom: 1px dashed #F4F9E9;
+    font-size: large;
+    font-weight: 600;
+    color: #F4F9E9;
+    background-color: transparent;
+    resize: vertical;
+    margin: 10px 0;
+    max-height: 425px;
   }

@@ -27,8 +27,6 @@ function capture(query, name, input) {
 
 var inputs = document.getElementsByTagName("input");
 Array.prototype.slice.call(inputs).forEach((input) => {
-    console.log('capturing')
-
 	// Try remember whats added
 	try {
 		capture('username', 'savedUsername', input);

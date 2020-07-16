@@ -50,7 +50,7 @@
           Server Offline
         </div>
         <div class="center">
-          <button id="ShowSave">New info found</button>
+          <button id="ShowSave">New Login Found</button>
         </div>        
         <div class="row">
           <button id="ShowGenerate">Generator</button>
@@ -59,7 +59,7 @@
       </div>
 
       <div id="SavedData">
-        <div class="heading">Save info?</div>
+        <div class="heading">Save Login?</div>
         <div class="subheading">Current Site:</div>
         <div class="bar"></div>
         <input class="data" id="SavedSite" value="No Site Available" />
@@ -82,21 +82,28 @@
         <div class="heading">Generate Password</div>
         <div class="subheading">Password:</div>
         <div class="bar"></div>
-        <div id="NewPassword" class="data"></div>
+        <textarea id="NewPassword" readonly></textarea>
         <div class="subheading">Length:</div>
-        <div class="bar"> </div>
-          <input
-            id="MaxLength"
-            type="number"
-            placeholder="Max Length"
-          />
+        <div class="bar"></div>
+        <input
+          id="MaxLength"
+          type="number"
+          placeholder="Max Length"
+        />
         <div class="subheading">Uppercase:</div>
         <div class="bar"></div>
-          <input
-            id="Uppercase"
-            type="number"
-            placeholder="Number of Uppercase Letters"
-          />
+        <input
+          id="Uppercase"
+          type="number"
+          placeholder="Number of Uppercase Letters"
+        />
+        <div class="subheading">Lowercase:</div>
+        <div class="bar"></div>
+        <input
+          id="Lowercase"
+          type="number"
+          placeholder="Number of Lowercase Letters"
+        />
         <div class="subheading">Special:</div>
         <div class="bar"></div>
         <div class="row">
@@ -111,6 +118,11 @@
             placeholder="@%+/\!#$^?:(){}[]~-_."
           />
         </div>
+        <input
+            id="CharactersAmount"
+            type="text"
+            placeholder="Number of Special Characters"
+          />
         <div class="row">
           <button id="GeneratePassword">Generate</button>
           <button class="GoBack">Back</button>
