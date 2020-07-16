@@ -44,14 +44,14 @@ function getCurrentSitePassword(callback) {
 
 
 // When the tab loads, look for password inputs
-chrome.webNavigation.onCompleted.addListener(function() {
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+chrome.webNavigation.onCompleted.addListener(() => {
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     if (tabs[0].url && !tabs[0].url.includes('chrome://')) {
       // Clear username/password storage
       chrome.storage.sync.set({username: null});
       chrome.storage.sync.set({password: null});
       // Save current tab url for use in injected script
-      getCurrentSitePassword(function() {
+      getCurrentSitePassword(() => {
         // Inject script to find password inputs
         chrome.tabs.executeScript(
           tabs[0].id,
