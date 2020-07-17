@@ -15,7 +15,7 @@ function autofill(query, input) {
 	const id = input.id;
 
 	if (verifyInput(type, query) || verifyInput(id, query)) {
-		chrome.storage.sync.get(query, (data) => {
+		chrome.storage.local.get(query, (data) => {
 			if (data[query]) {
 				input.style.backgroundColor = '#FF6933';
 				input.value = data[query];

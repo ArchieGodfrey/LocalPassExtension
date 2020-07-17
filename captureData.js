@@ -15,10 +15,16 @@ function capture(query, name, input) {
 	const id = input.id;
 
 	if (verifyInput(type, query) || verifyInput(id, query)) {
+		// On first find, save data
+		const temp = {};
+		temp[name] = input.value
+		chrome.storage.local.set(temp);
+
+		// Then save when changed
 		input.onchange = () => {
 			const temp = {};
 			temp[name] = input.value
-			chrome.storage.sync.set(temp);
+			chrome.storage.local.set(temp);
 		}
 	}
 }

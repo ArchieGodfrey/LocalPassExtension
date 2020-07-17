@@ -9,7 +9,7 @@ function httpGet(url, callback)
           callback(xmlHttp.responseText);
         }
     }
-    chrome.storage.sync.get('token', function(data) {
+    chrome.storage.local.get('token', function(data) {
       if (data.token) {
         xmlHttp.open("GET", url, true);
         xmlHttp.setRequestHeader('Authorization', 'Bearer ' + data.token);
@@ -21,19 +21,15 @@ function httpGet(url, callback)
 // GET PASSWORD ------------------------------------------------------------
 
 // Get the password for the current site
-function getCurrentSitePassword(callback) {
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    var activeTabURL = tabs[0].url;
-    let cleanURL = activeTabURL.split('//').pop().split('/')[0];
-    chrome.storage.sync.get('url', function(data) {
-      httpGet(`http://${data.url}:8080/manager/${cleanURL}`, (res) => {
-        const response = JSON.parse(res);
-        if (response && response.status === 'OK') {
-          chrome.storage.sync.set({username: response.data.username});
-          chrome.storage.sync.set({password: response.data.password});
-          callback();
-        }
-      });
+function getCurrentSitePassword(cleanURL, callback) {
+  chrome.storage.local.get('url', function(data) {
+    httpGet(`http://${data.url}:8080/manager/${cleanURL}`, (res) => {
+      const response = JSON.parse(res);
+      if (response && response.status === 'OK') {
+        chrome.storage.local.set({username: response.data.username});
+        chrome.storage.local.set({password: response.data.password});
+        callback();
+      }
     });
   });
 }
@@ -42,13 +38,13 @@ function getCurrentSitePassword(callback) {
 // When the tab loads, look for password inputs
 chrome.webNavigation.onCompleted.addListener(() => {
   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    if (tabs[0].url && !tabs[0].url.includes('chrome://')) {
+    if (tabs[0] && tabs[0].url && !tabs[0].url.includes('chrome://')) {
       // Clear username/password storage
-      chrome.storage.sync.set({username: null});
-      chrome.storage.sync.set({password: null});
+      chrome.storage.local.set({username: null});
+      chrome.storage.local.set({password: null});
       // Save active site
       let cleanURL = tabs[0].url.split('//').pop().split('/')[0];
-      chrome.storage.sync.set({savedSite: cleanURL});
+      chrome.storage.local.set({savedSite: cleanURL});
       // Capture data to offer to save
       chrome.tabs.executeScript(
         tabs[0].id,
@@ -57,7 +53,7 @@ chrome.webNavigation.onCompleted.addListener(() => {
         }
       );
       // Save current tab url for use in injected script
-      getCurrentSitePassword(() => {
+      getCurrentSitePassword(cleanURL, () => {
         // Inject script to find password inputs
         chrome.tabs.executeScript(
           tabs[0].id,

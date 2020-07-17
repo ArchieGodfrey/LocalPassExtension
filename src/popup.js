@@ -29,12 +29,12 @@ function httpGet(url, callback)
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
           callback(xmlHttp.responseText);
         } else if (xmlHttp.status === 401 || xmlHttp.status === 403) {
-          onRevokeAccess('Please Request Access Again')
+          onAccessChange('Please Request Access Again', true);
         } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
           showError('GET Request Failed: ' + xmlHttp.status);
         }  
     }
-    chrome.storage.sync.get('token', function(data) {
+    chrome.storage.local.get('token', function(data) {
       if (data.token) {
         xmlHttp.open("GET", url, true);
         xmlHttp.setRequestHeader('Authorization', 'Bearer ' + data.token);
@@ -68,11 +68,13 @@ function httpPost(url, payload, callback)
     xmlHttp.onreadystatechange = function() { 
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
           callback(xmlHttp.responseText);
+        } else if (xmlHttp.status === 401 || xmlHttp.status === 403) {
+          onAccessChange('Please Request Access Again', true);
         } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
           showError('POST Request Failed: ' + xmlHttp.status);
         } 
     }
-    chrome.storage.sync.get('token', function(data) {
+    chrome.storage.local.get('token', function(data) {
       if (data.token) {
         xmlHttp.open("POST", url, true);
         xmlHttp.setRequestHeader('Authorization', 'Bearer ' + data.token);
@@ -106,7 +108,7 @@ function checkServer(url, app) {
 // PREFILL DATA ------------------------------------------------------------
 
 // Autofill fields if data in storage
-chrome.storage.sync.get('url', function(data) {
+chrome.storage.local.get('url', function(data) {
   let url = document.getElementById('Url');
   if (data.url) {
     url.value = data.url;
@@ -118,13 +120,13 @@ chrome.storage.sync.get('url', function(data) {
     // }, 5000)
   }
 });
-chrome.storage.sync.get('localUsername', function(data) {
+chrome.storage.local.get('localUsername', function(data) {
   let LocalUsername = document.getElementById('LocalUsername');
   if (data.localUsername) {
     LocalUsername.value = data.localUsername;
   }
 });
-chrome.storage.sync.get('token', function(data) {
+chrome.storage.local.get('token', function(data) {
   let accessStatus = document.getElementById('AccessStatus');
   if (data.token && data.token !== 'REVOKED') {
     accessStatus.innerHTML = "Access Granted";
@@ -135,25 +137,38 @@ chrome.storage.sync.get('token', function(data) {
     document.getElementById('RevokeAccess').style.display = 'none';
   }
 });
-chrome.storage.sync.get('savedPassword', function(password) {
-  chrome.storage.sync.get('savedUsername', function(username) {
-    chrome.storage.sync.get('savedSite', function(site) {
-      if (site.savedSite) {
-        let savedSite = document.getElementById('SavedSite');
-        savedSite.value = site.savedSite;
-      }
-      if (username.savedUsername) {
-        let savedUsername = document.getElementById('SavedUsername');
-        savedUsername.value = username.savedUsername;
-      }
-      if (password.savedPassword ) {
-        let savedPassword = document.getElementById('SavedPassword');
-        savedPassword.value = password.savedPassword;
+
+// Get new login info
+function getLoginInfo() {
+  chrome.storage.local.get('savedPassword', function(password) {
+    chrome.storage.local.get('savedUsername', function(username) {
+      chrome.storage.local.get('savedSite', function(site) {
         let showSave = document.getElementById('ShowSave');
-        showSave.style.display = 'block';
-      }
+        if (site.savedSite) {
+          let savedSite = document.getElementById('SavedSite');
+          savedSite.value = site.savedSite;
+        }
+        if (username.savedUsername) {
+          let savedUsername = document.getElementById('SavedUsername');
+          savedUsername.value = username.savedUsername;
+          showSave.style.display = 'block';
+        }
+        if (password.savedPassword ) {
+          let savedPassword = document.getElementById('SavedPassword');
+          savedPassword.value = password.savedPassword;
+          showSave.style.display = 'block';
+        }
+      })
     })
   })
+}
+
+// Try get on first load
+getLoginInfo();
+
+// Otherwise listen for changes
+chrome.storage.onChanged.addListener(() => {
+  getLoginInfo();
 })
 
 // PAGE SWAPPING -----------------------------------------------------------
@@ -183,9 +198,9 @@ showMain.onclick = function() {
 
   // Save settings
   let url = document.getElementById('Url').value;
-  chrome.storage.sync.set({url});
+  chrome.storage.local.set({url});
   let localUsername = document.getElementById('LocalUsername').value;
-  chrome.storage.sync.set({localUsername});
+  chrome.storage.local.set({localUsername});
 };
 
 // Swap to Generator
@@ -195,6 +210,10 @@ showGenerate.onclick = function() {
 
 // Swap to Saved Data
 showSave.onclick = function() {
+  let savedPassword = document.getElementById('SavedPassword');
+  if (savedPassword.value === "No Password Available") {
+    savedPassword.type = 'text';
+  }
   showPage(savedData);
 };
 
@@ -227,7 +246,8 @@ requestAccess.onclick = function() {
     if (token && token.accessToken) {
       accessStatus.innerHTML = "Access Granted";
       accessStatus.style.backgroundColor  = "green";
-      chrome.storage.sync.set({token: token.accessToken});
+      onAccessChange("Server Online");
+      chrome.storage.local.set({token: token.accessToken});
       document.getElementById('RevokeAccess').style.display = 'block';
     } else if (token && token.access) {
       accessStatus.innerHTML = token.access;
@@ -241,19 +261,24 @@ requestAccess.onclick = function() {
 // Revoke the extension's access to passwords
 let revokeAccess = document.getElementById('RevokeAccess');
 
-function onRevokeAccess(message) {
-  chrome.storage.sync.set({token: 'REVOKED'});
+function onAccessChange(message, revoke) {
+  if (revoke) {
+    chrome.storage.local.set({token: 'REVOKED'});
+    revokeAccess.style.display = 'none';
+  }
   accessStatus.innerHTML = message;
-  accessStatus.style.backgroundColor  = "#FF6933";
+  accessStatus.style.backgroundColor  =  revoke ? '#FF6933' : 'green';
   let serverStatus = document.getElementById('ServerStatus');
   serverStatus.innerHTML = message;
-  serverStatus.style.backgroundColor  = "#FF6933";
-  revokeAccess.style.display = 'none';
+  serverStatus.style.backgroundColor  = revoke ? '#FF6933' : 'green';
+  let appStatus = document.getElementById('AppStatus');
+  appStatus.innerHTML = message;
+  appStatus.style.backgroundColor  = revoke ? '#FF6933' : 'green';
 }
 
 // Remove JWT Token from storage
 revokeAccess.onclick = function() {
-  onRevokeAccess("Access Permission Required");
+  onAccessChange("Access Permission Required", true);
 }
 
 // SAVE PASSWORD -----------------------------------------------------------
@@ -263,21 +288,25 @@ let savePassword = document.getElementById('SavePassword');
 
 // Send POST request with data
 savePassword.onclick = function() {
+  savePassword.blur();
   let website = document.getElementById('SavedSite').value;
   let username = document.getElementById('SavedUsername').value;
   let password = document.getElementById('SavedPassword').value;
+  let appStatus = document.getElementById('AppStatus');
+  appStatus.innerHTML = "Waiting For App";
   let payload = {website,username,password};
   let url = document.getElementById('Url').value;
   httpPost(`http://${url}:8080/manager`, payload, (res) => {
     const response = JSON.parse(res);
     if (response && response.status === 'OK') {
-      let appStatus = document.getElementById('AppStatus');
       appStatus.style.backgroundColor = 'green';
       appStatus.innerHTML = "Password Saved";
-      // Clear saved data
-      chrome.storage.sync.set({savedSite: null});
-      chrome.storage.sync.set({savedUsername: null});
-      chrome.storage.sync.set({savedPassword: null});
+      // Clear saved data and hide button
+      chrome.storage.local.set({savedSite: null});
+      chrome.storage.local.set({savedUsername: null});
+      chrome.storage.local.set({savedPassword: null});
+      let showSave = document.getElementById('ShowSave');
+      showSave.style.display = 'none';
       setTimeout(() => {
         appStatus.innerHTML = "Server Online";
       }, 3000);
@@ -314,6 +343,24 @@ function onCopyToClipboard(id) {
 onCopyToClipboard('SavedUsername');
 onCopyToClipboard('SavedPassword');
 onCopyToClipboard('NewPassword');
+
+// HIDE PASSWORD -----------------------------------------------------------
+
+function onChangePassword(id) {
+  let element = document.getElementById(id);
+  element.onfocus = function() {
+    element.type = 'text';
+  }
+  element.onblur = function() {
+    console.log('blur')
+    if (element.value !== "No Password Available") {
+      element.type = 'password';
+    }
+  }
+}
+
+// Set listeners
+onChangePassword('SavedPassword');
 
 // GENERATE PASSWORD -------------------------------------------------------
 
