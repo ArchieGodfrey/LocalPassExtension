@@ -2,6 +2,11 @@
     "name": "LocalPass",
     "version": "1.0",
     "description": "Local Password Manager",
+    "icons": {
+      "16": "LocalPassLogo16.png",
+      "48": "LocalPassLogo48.png",
+      "128": "LocalPassLogo128.png"
+    },
     "background": {
         "scripts": ["onPageLoad.js"],
         "persistent": false
