@@ -30,6 +30,7 @@ function httpGet(url, callback)
           callback(xmlHttp.responseText);
         } else if (xmlHttp.status === 401 || xmlHttp.status === 403) {
           onAccessChange('Please Request Access Again', true);
+          // callback(undefined);
         } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
           showError('GET Request Failed: ' + xmlHttp.status);
         }  
@@ -46,23 +47,7 @@ function httpGet(url, callback)
 }
 
 // Sends a POST request without a token
-function httpPostNoToken(url, payload, callback)
-{
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() { 
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-          callback(xmlHttp.responseText);
-        } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
-          showError('No Server Response: ' + xmlHttp.status);
-        } 
-    }
-    xmlHttp.open("POST", url, true);
-    xmlHttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-    xmlHttp.send(JSON.stringify(payload));
-}
-
-// Sends a POST request without a token
-function httpPostNoTokenPromise(url, payload) {
+function httpPostNoToken(url, payload) {
   return new Promise((resolve, reject) => {
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.onreadystatechange = function() { 
@@ -80,19 +65,19 @@ function httpPostNoTokenPromise(url, payload) {
 }
 
 // Sends a POST request with a token
-function httpPost(url, payload, callback)
-{
+function httpPost(url, payload) {
+  return new Promise((resolve, reject) => {
     var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() { 
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-          callback(xmlHttp.responseText);
-        } else if (xmlHttp.status === 401 || xmlHttp.status === 403) {
-          onAccessChange('Please Request Access Again', true);
-        } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
-          showError('POST Request Failed: ' + xmlHttp.status);
-        } 
+    xmlHttp.onreadystatechange = () => {
+      if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+        resolve(JSON.parse(xmlHttp.responseText));
+      } else if (xmlHttp.status === 401 || xmlHttp.status === 403) {
+        onAccessChange('Please Request Access Again', true);
+      } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
+        showError('POST Request Failed: ' + xmlHttp.status);
+      }
     }
-    chrome.storage.local.get('token', function(data) {
+    chrome.storage.local.get('token', (data) => {
       if (data.token) {
         xmlHttp.open("POST", url, true);
         xmlHttp.setRequestHeader('Authorization', 'Bearer ' + data.token);
@@ -100,8 +85,10 @@ function httpPost(url, payload, callback)
         xmlHttp.send(JSON.stringify(payload));
       } else {
         showError('POST: No Access Token');
+        reject();
       }
-    });
+    })
+  })
 }
 
 // SERVER STATUS -----------------------------------------------------------
@@ -259,7 +246,7 @@ requestAccess.onclick = async() => {
   const url = document.getElementById('Url').value;
   const username = document.getElementById('LocalUsername').value;
   accessStatus.innerHTML = "Waiting for reponse on device";
-  const response = await httpPostNoTokenPromise(`http://${url}:8080/auth/login`, {username});
+  const response = await httpPostNoToken(`http://${url}:8080/auth/login`, {username});
   if (response && response.accessToken) {
     accessStatus.innerHTML = "Access Granted";
     accessStatus.style.backgroundColor  = "green";
@@ -312,8 +299,7 @@ savePassword.onclick = function() {
   appStatus.innerHTML = "Waiting For App";
   let payload = {website,username,password};
   let url = document.getElementById('Url').value;
-  httpPost(`https://${url}:8080/manager/logins`, payload, (res) => {
-    const response = JSON.parse(res);
+  sendEncrypted(`http://${url}:8080/manager`, payload).then((response) => {
     if (response && response.status === 'OK') {
       appStatus.style.backgroundColor = 'green';
       appStatus.innerHTML = "Password Saved";
@@ -503,18 +489,6 @@ function ab2Hex(buf, isArray = false) {
       .join("");
 }
 
-/**
- * Converts hex encoded string to ArrayBuffer
- * @param {*} hex string to convert
- */
-function hex2ab(hex) {
-  var view = new Uint8Array(hex.length / 2)
-  for (var i = 0; i < hex.length; i += 2) {
-    view[i / 2] = parseInt(hex.substring(i, i + 2), 16)
-  }
-  return view.buffer
-}
-
 // CRYPTION FUNCTIONS ---------------------------------------------------------
 
 async function sendEncrypted(address, data) {
@@ -523,7 +497,7 @@ async function sendEncrypted(address, data) {
 
   // 2) Try get Public key from server
   const response = await initiateHandshake(publicKey, address);
-  console.log('reponse: ', response);
+
   // If reponse contains key
   if (response.status === 'OK') {
     // 3) Import server Public Key into usable format
@@ -540,47 +514,11 @@ async function sendEncrypted(address, data) {
     const payload = {encrypted, iv: encryptedIV, aesKey: encryptedAESKey}
 
     // 7) Send to server
-    return await httpPostNoTokenPromise(address, payload);
+    return await httpPost(address, payload);
   } else {
     showError('Unable to get server public key');
     return undefined;
   }
-}
-
-async function requestEncrypted(address) {
-  // 1) Get fresh key pair for message
-  const { publicKey, privateKey } = await createKeyPair();
-
-  // 2) Try get response from server
-  const response = await initiateHandshake(publicKey, address);
-  
-  // If reponse is OK
-  if (response.status === 'OK') {
-    // 3) Extract AES key from response
-    const aesKey = await extractAESKey(privateKey, response);
-
-    // 4) Decrypt iv from response
-    const aesIV = await RSADecrypt(privateKey, hex2ab(response.aesIV));
-    console.log('decrypted: ', aesIV);
-
-    // 5) Decrypt server response
-    const decrypted = {};
-    Object.keys(response.aesData).forEach(async(key) => {
-      decrypted[key] = await AESDecrypt(aesKey, aesIV, response.aesData[key]);
-    });
-    return decrypted;
-  } else {
-    showError('Unable to get server public key');
-    return undefined;
-  }
-}
-
-async function extractAESKey(privateKey, { aesKey }) {
-  // 1) Decrypt server AES Key using Private key
-  const serverAESKey = await RSADecrypt(privateKey, str2ab(aesKey));
-
-  // 2) Return AES key as a usable format
-  return await importAESKey(serverAESKey);
 }
 
 async function initiateHandshake(publicKey, address) {
@@ -588,10 +526,10 @@ async function initiateHandshake(publicKey, address) {
   const key = await exportPublicKey(publicKey);
 
   // 2) Create payload
-  const payload = {key};
+  const payload = {key, initial: true};
 
   // 3) Send to server and await response
-  return await httpPostNoTokenPromise(address, payload);
+  return await httpPost(address, payload);
 }
 
 // AES CRYPTION --------------------------------------------------------------
@@ -606,21 +544,6 @@ async function AESEncrypt(key, iv, message) {
   );
   // 3) Return both buffers converted to hex strings 
   return ab2Hex(encryptedData);
-}
-
-async function AESDecrypt(aesKey, aesIV, aesData) {
-  // 1) Convert data into 16 bit buffers
-  const dataBuffer = hex2ab(aesData);
-
-  // 2) Decrypt data then convert buffer to string
-  return window.atob(ab2str(await window.crypto.subtle.decrypt(
-    {
-      name: "AES-CBC",
-      iv: aesIV,
-    },
-    aesKey,
-    dataBuffer
-  )));
 }
 
 async function generateAESKey() {
@@ -638,16 +561,6 @@ async function generateAESiv() {
   const iv = window.crypto.getRandomValues(new Uint8Array(16));
   const ivString = ab2Hex(iv, true);
   return { iv, ivString }
-}
-
-function importAESKey(rawKey) {
-  return window.crypto.subtle.importKey(
-    "raw",
-    rawKey,
-    "AES-CBC",
-    true,
-    ["encrypt", "decrypt"]
-  );
 }
 
 async function exportAESKey(key) {
@@ -693,16 +606,6 @@ async function RSAEncrypt(key, message) {
     key,
     encoded
   ))
-}
-
-async function RSADecrypt(key, encoded) {
-  return await window.crypto.subtle.decrypt(
-    {
-      name: "RSA-OAEP",
-    },
-    key,
-    encoded
-  );
 }
 
 async function createKeyPair() {

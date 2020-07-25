@@ -1,40 +1,17 @@
 // HTTP REQUESTS -----------------------------------------------------------
-// Sends a GET request with a token
-function httpGet(url) {
-  return new Promise((resolve, reject) => {
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() { 
-      if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
-        resolve(xmlHttp.responseText);
-      } else if (xmlHttp.readyState == 4) {
-        reject({status: 'FAIL'});
-      } 
-    }
-    chrome.storage.local.get('token', function(data) {
-      if (data.token) {
-        xmlHttp.open("GET", url, true);
-        xmlHttp.setRequestHeader('Authorization', 'Bearer ' + data.token);
-        xmlHttp.send();
-      } else {
-        reject();
-      }
-    });
-  })
-}
 
-// Sends a POST request without a token
+// Sends a POST request with a token
 function httpPost(url, payload) {
   return new Promise((resolve, reject) => {
     var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() {
+    xmlHttp.onreadystatechange = () => {
       if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
         resolve(JSON.parse(xmlHttp.responseText));
       } else if (xmlHttp.readyState == 4) {
-        console.error('bad: ', xmlHttp.status)
         reject({status: 'FAIL'});
       }
     }
-    chrome.storage.local.get('token', function(data) {
+    chrome.storage.local.get('token', (data) => {
       if (data.token) {
         xmlHttp.open("POST", url, true);
         xmlHttp.setRequestHeader('Authorization', 'Bearer ' + data.token);
@@ -54,7 +31,7 @@ function getCurrentSitePassword(cleanURL) {
   return new Promise(async (resolve, reject) => {
     chrome.storage.local.get('url', (data) => {
       if (data.url) {
-        requestEncrypted(`http://${data.url}:8080/manager/${cleanURL}`).then(
+        requestEncrypted(`http://${data.url}:8080/manager/logins/${cleanURL}`).then(
           ({username, password}) => {
             chrome.storage.local.set({username});
             chrome.storage.local.set({password});
@@ -122,17 +99,6 @@ function str2ab(str) {
     bufView[i] = bin.charCodeAt(i);
   }
   return buf;
-}
-
-/**
- * Converts ArrayBuffer to hex encoded string
- * @param {*} buf buffer to convert
- * @param {*} isArray whether the buffer is an array
- */
-function ab2Hex(buf, isArray = false) {
-  return [...(isArray ? buf : new Uint8Array(buf))]
-      .map(b => b.toString (16).padStart (2, "0"))
-      .join("");
 }
 
 /**
