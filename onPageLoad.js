@@ -27,7 +27,6 @@ function httpPost(url, payload) {
   return new Promise((resolve, reject) => {
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.onreadystatechange = function() {
-      console.error('changed: ', xmlHttp.readyState, xmlHttp.status);
       if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
         resolve(JSON.parse(xmlHttp.responseText));
       } else if (xmlHttp.readyState == 4) {
@@ -150,35 +149,6 @@ function hex2ab(hex) {
 
 // CRYPTION FUNCTIONS ---------------------------------------------------------
 
-async function sendEncrypted(address, data) {
-  // 1) Get fresh key pair for message
-  const { publicKey } = await createKeyPair();
-
-  // 2) Try get Public key from server
-  const response = await initiateHandshake(publicKey, address);
-
-  // If reponse contains key
-  if (response.status === 'OK') {
-    // 3) Import server Public Key into usable format
-    const serverPublicKey = await importPublicKey(response);
-
-    // 4) Create new AES key and encrypt message
-    const { exportedAESKey, encrypted, ivString } = await initiateAESEncrypt(data);
-
-    // 5) Encrypt AES key and IV with external Public key
-    const encryptedAESKey = await RSAEncrypt(serverPublicKey, exportedAESKey);
-    const encryptedIV = await RSAEncrypt(serverPublicKey, ivString);
-    
-    // 6) Prepare payload
-    const payload = {encrypted, iv: encryptedIV, aesKey: encryptedAESKey}
-
-    // 7) Send to server
-    return await httpPost(address, payload);
-  } else {
-    return;
-  }
-}
-
 async function requestEncrypted(address) {
   // 1) Get fresh key pair for message
   const { publicKey, privateKey } = await createKeyPair();
@@ -236,18 +206,6 @@ async function initiateHandshake(publicKey, address) {
 
 // AES CRYPTION --------------------------------------------------------------
 
-async function AESEncrypt(key, iv, message) {
-  // 1) Convert string to ArrayBuffer
-  let encoded = new TextEncoder().encode(message);
-  const encryptedData = await window.crypto.subtle.encrypt(
-    { name: "AES-CBC", iv },
-    key,
-    encoded
-  );
-  // 3) Return both buffers converted to hex strings 
-  return ab2Hex(encryptedData);
-}
-
 async function AESDecrypt(aesKey, aesIV, aesData) {
   // 1) Convert data into 16 bit buffers
   const dataBuffer = hex2ab(aesData);
@@ -263,23 +221,6 @@ async function AESDecrypt(aesKey, aesIV, aesData) {
   )));
 }
 
-async function generateAESKey() {
-  return await window.crypto.subtle.generateKey(
-    {
-      name: "AES-CBC",
-      length: 256
-    },
-    true,
-    ["encrypt", "decrypt"]
-  );
-}
-
-async function generateAESiv() {
-  const iv = window.crypto.getRandomValues(new Uint8Array(16));
-  const ivString = ab2Hex(iv, true);
-  return { iv, ivString }
-}
-
 function importAESKey(rawKey) {
   return window.crypto.subtle.importKey(
     "raw",
@@ -290,50 +231,8 @@ function importAESKey(rawKey) {
   );
 }
 
-async function exportAESKey(key) {
-  // 1) Create new AES key
-  const exported = await window.crypto.subtle.exportKey(
-    "raw",
-    key
-  );
-  // 2) Convert buffer to string
-  return ab2str(exported);
-}
-
-async function initiateAESEncrypt(data) {
-  // 1) Generate new AES key
-  const aesKey = await generateAESKey();
-
-  // 2) Generate IV to use in encryption
-  const { iv, ivString } = await generateAESiv();
-
-  // 3) Encrypt message with AES key
-  const encrypted = {};
-  Object.keys(data).forEach(async(key) => {
-    encrypted[key] = await AESEncrypt(aesKey, iv, data[key]);
-  });
-
-  // 4) Convert key into usable format
-  const exportedAESKey = await exportAESKey(aesKey);
-
-  // 5) Return key and message
-  return { exportedAESKey, encrypted, ivString }
-}
 
 // RSA CRYPTION --------------------------------------------------------------
-
-async function RSAEncrypt(key, message) {
-  // 1) Convert string to buffer
- let encoded = new TextEncoder().encode(message);
- // 2) Encrypt buffer then return string
- return ab2str(await window.crypto.subtle.encrypt(
-    {
-      name: "RSA-OAEP"
-    },
-    key,
-    encoded
-  ))
-}
 
 async function RSADecrypt(key, encoded) {
   return await window.crypto.subtle.decrypt(
@@ -355,22 +254,6 @@ async function createKeyPair() {
     },
     true,
     ["encrypt", "decrypt"]
-  );
-}
-
-async function importPublicKey({ publicKey }) {
-  // 1) Convert from a binary string to an ArrayBuffer
-  const keyBuffer = str2ab(publicKey);
-  // 2) Return key in a usable format
-  return await window.crypto.subtle.importKey(
-    "spki",
-    keyBuffer,
-    {
-      name: "RSA-OAEP",
-      hash: "SHA-256"
-    },
-    true,
-    ["encrypt"]
   );
 }
 
