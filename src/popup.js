@@ -254,25 +254,23 @@ let requestAccess = document.getElementById('RequestAccess');
 let accessStatus = document.getElementById('AccessStatus');
 
 // Send POST request and await response
-requestAccess.onclick = function() {
+requestAccess.onclick = async() => {
   requestAccess.blur();
-  let url = document.getElementById('Url').value;
-  let LocalUsername = document.getElementById('LocalUsername').value;
+  const url = document.getElementById('Url').value;
+  const username = document.getElementById('LocalUsername').value;
   accessStatus.innerHTML = "Waiting for reponse on device";
-  httpPostNoToken(`https://${url}:8080/auth/login`, {username: LocalUsername}, (response) => {
-    const token = JSON.parse(response);
-    if (token && token.accessToken) {
-      accessStatus.innerHTML = "Access Granted";
-      accessStatus.style.backgroundColor  = "green";
-      onAccessChange("Server Online");
-      chrome.storage.local.set({token: token.accessToken});
-      document.getElementById('RevokeAccess').style.display = 'block';
-    } else if (token && token.access) {
-      accessStatus.innerHTML = token.access;
-    } else {
-      accessStatus.innerHTML = 'No Response, please try again'
-    }
-  });
+  const response = await httpPostNoTokenPromise(`http://${url}:8080/auth/login`, {username});
+  if (response && response.accessToken) {
+    accessStatus.innerHTML = "Access Granted";
+    accessStatus.style.backgroundColor  = "green";
+    onAccessChange("Server Online");
+    chrome.storage.local.set({token: response.accessToken});
+    document.getElementById('RevokeAccess').style.display = 'block';
+  } else if (response && response.access) {
+    accessStatus.innerHTML = response.access;
+  } else {
+    accessStatus.innerHTML = 'No Response, please try again'
+  }
 };
 // REVOKE ACCESS ----------------------------------------------------------
 
@@ -314,7 +312,7 @@ savePassword.onclick = function() {
   appStatus.innerHTML = "Waiting For App";
   let payload = {website,username,password};
   let url = document.getElementById('Url').value;
-  httpPost(`https://${url}:8080/manager`, payload, (res) => {
+  httpPost(`https://${url}:8080/manager/logins`, payload, (res) => {
     const response = JSON.parse(res);
     if (response && response.status === 'OK') {
       appStatus.style.backgroundColor = 'green';
@@ -516,10 +514,6 @@ function hex2ab(hex) {
   }
   return view.buffer
 }
-
-console.log(sendEncrypted('http://localhost:3000', {test: 'test message length test'}));
-
-console.log(requestEncrypted('http://localhost:3000'));
 
 // CRYPTION FUNCTIONS ---------------------------------------------------------
 
