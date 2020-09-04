@@ -29,7 +29,7 @@ function httpGet(url, callback)
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
           callback(xmlHttp.responseText);
         } else if (xmlHttp.status === 401 || xmlHttp.status === 403) {
-          onAccessChange('Please Request Access Again', true);
+          onAccessChange('Please Request Access Again');
           // callback(undefined);
         } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
           showError('GET Request Failed: ' + xmlHttp.status);
@@ -41,7 +41,7 @@ function httpGet(url, callback)
         xmlHttp.setRequestHeader('Authorization', 'Bearer ' + data.token);
         xmlHttp.send();
       } else {
-        showError('GET: No Access Token');
+        onAccessChange('Please Request Access Again');
       }
     });
 }
@@ -72,7 +72,7 @@ function httpPost(url, payload) {
       if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
         resolve(JSON.parse(xmlHttp.responseText));
       } else if (xmlHttp.status === 401 || xmlHttp.status === 403) {
-        onAccessChange('Please Request Access Again', true);
+        onAccessChange('Please Request Access Again');
       } else if (xmlHttp.status !== 0 && xmlHttp.status != 200) {
         showError('POST Request Failed: ' + xmlHttp.status);
       }
@@ -259,6 +259,7 @@ requestAccess.onclick = async() => {
     accessStatus.innerHTML = 'No Response, please try again'
   }
 };
+
 // REVOKE ACCESS ----------------------------------------------------------
 
 // Revoke the extension's access to passwords
@@ -354,7 +355,6 @@ function onChangePassword(id) {
     element.type = 'text';
   }
   element.onblur = function() {
-    console.log('blur')
     if (element.value !== "No Password Available") {
       element.type = 'password';
     }
@@ -581,10 +581,7 @@ async function initiateAESEncrypt(data) {
   const { iv, ivString } = await generateAESiv();
 
   // 3) Encrypt message with AES key
-  const encrypted = {};
-  Object.keys(data).forEach(async(key) => {
-    encrypted[key] = await AESEncrypt(aesKey, iv, data[key]);
-  });
+  const encrypted = await encryptObject(data, {}, aesKey, iv);
 
   // 4) Convert key into usable format
   const exportedAESKey = await exportAESKey(aesKey);
@@ -592,6 +589,18 @@ async function initiateAESEncrypt(data) {
   // 5) Return key and message
   return { exportedAESKey, encrypted, ivString }
 }
+
+async function encryptObject(data, encrypted, aesKey, iv) {
+  const keys = Object.keys(data);
+  keys.forEach(async (key) => {
+    if (typeof data[key] === 'object') {
+      encrypted[key] = await encryptObject(data[key], {}, aesKey, iv);
+    } else {
+      encrypted[key] = await AESEncrypt(aesKey, iv, data[key]);
+    }
+  });
+  return encrypted;
+};
 
 // RSA CRYPTION --------------------------------------------------------------
 

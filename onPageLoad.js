@@ -27,14 +27,13 @@ function httpPost(url, payload) {
 // GET PASSWORD ------------------------------------------------------------
 
 // Get the password for the current site
-function getCurrentSitePassword(cleanURL) {
+function getCurrentSitePassword(website) {
   return new Promise(async (resolve, reject) => {
     chrome.storage.local.get('url', (data) => {
       if (data.url) {
-        requestEncrypted(`http://${data.url}:8080/manager/logins/${cleanURL}`).then(
-          ({username, password}) => {
-            chrome.storage.local.set({username});
-            chrome.storage.local.set({password});
+        requestEncrypted(`http://${data.url}:8080/manager/logins/${website}`).then(
+          (logins) => {
+            chrome.storage.local.set(logins);
             resolve();
           }
         ).catch(e => console.error('Unable to request ', JSON.stringify(e)));
@@ -50,12 +49,11 @@ function getCurrentSitePassword(cleanURL) {
 chrome.webNavigation.onCompleted.addListener(() => {
   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     if (tabs[0] && tabs[0].url && !tabs[0].url.includes('chrome://')) {
-      // Clear username/password storage
-      chrome.storage.local.set({username: null});
-      chrome.storage.local.set({password: null});
+      // Clear last login storage
+      chrome.storage.local.set({logins: null});
       // Save active site
-      let cleanURL = tabs[0].url.split('//').pop().split('/')[0];
-      chrome.storage.local.set({savedSite: cleanURL});
+      const website = tabs[0].url.split('//').pop().split('/')[0];
+      chrome.storage.local.set({savedSite: tabs[0].url});
       // Capture data to offer to save
       chrome.tabs.executeScript(
         tabs[0].id,
@@ -64,7 +62,7 @@ chrome.webNavigation.onCompleted.addListener(() => {
         }
       );
       // Save current tab url for use in injected script
-      getCurrentSitePassword(cleanURL).then(() => {
+      getCurrentSitePassword(website).then(() => {
         // Inject script to find password inputs
         chrome.tabs.executeScript(
           tabs[0].id,
@@ -72,7 +70,7 @@ chrome.webNavigation.onCompleted.addListener(() => {
             file: 'findPassword.js'
           }
         );
-      })//.catch(e => console.error('Unable to get password', e));
+      }).catch(e => console.error('Unable to fill password', e));
     }
   });
 });
@@ -131,24 +129,27 @@ async function requestEncrypted(address) {
     const aesIV = await RSADecrypt(privateKey, hex2ab(response.aesIV)).catch(e => console.error('try dec: ', e));
 
     // 5) Decrypt server response
-    return new Promise((resolve, reject) => {
-      const decrypted = {};
-      const keys = Object.keys(response.aesData);
-      keys.map((key, index) => {
-        AESDecrypt(aesKey, aesIV, response.aesData[key]).then((data) => {
-          decrypted[key] = data;
-          if (index === keys.length - 1) {
-            resolve(decrypted);
-          }
-        }).catch((error) => {
-          console.error('Error decrypting: ', error);
-          reject({});
-        });
-      });
-    });
+    return await decryptObject(response.aesData, {}, aesKey, aesIV);
   } else {
     return {status: 'FAIL'};
   }
+}
+
+async function decryptObject(encrypted, decrypted, aesKey, aesIV) {
+  return new Promise((resolve, reject) => {
+    const keys = Object.keys(encrypted);
+    keys.forEach(async (key, index) => {
+      if (typeof encrypted[key] === 'object') {
+        decrypted[key] = await decryptObject(encrypted[key], {}, aesKey, aesIV);
+      } else {
+        decrypted[key] = await AESDecrypt(aesKey, aesIV, encrypted[key])
+          .catch((error) => reject('Error decrypting: ' + error));
+      }
+      if (index === keys.length - 1) {
+        resolve(decrypted);
+      }
+    });
+  });
 }
 
 async function extractAESKey(privateKey, { aesKey }) {
